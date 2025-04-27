@@ -2,6 +2,32 @@ local SpaceShipFunctions = require("SpaceShipFunctionsScript")
 local SpaceShip = require("spacShip")
 local SpaceShipGuis = {}
 
+local function add_move_up_down_buttons(parent, widget_index)
+    local up_down_flow = parent.add{
+        type = "flow",
+        direction = "vertical"
+    }
+    local moveup = up_down_flow.add {
+        type = "sprite-button",
+        name = "moveup",
+        sprite = "virtual-signal/up-arrow",
+        tooltip = "Move up",
+        style = "train_schedule_action_button",
+        tags = {widget_index = widget_index}
+    }
+    moveup.style.size = { 20, 12 }
+
+    local movedown = up_down_flow.add {
+        type = "sprite-button",
+        name = "movedown",
+        sprite = "virtual-signal/down-arrow",
+        tooltip = "Move down",
+        style = "train_schedule_action_button",
+        tags = {widget_index = widget_index}
+    }
+    movedown.style.size = { 20, 12 }
+end
+
 -- Function to create the custom spaceship control GUI
 function SpaceShipGuis.create_spaceship_gui(player, ship)
     local relative_gui = player.gui.relative
@@ -103,7 +129,7 @@ function SpaceShipGuis.create_condition_gui(parent)
 
     -- Create main frame
     local frame = parent.add {
-        type = "frame",
+        type = "flow",
         name = "spaceship-condition-gui",
         direction = "vertical",
     }
@@ -300,7 +326,7 @@ function SpaceShipGuis.add_condition_row(event)
     }
     value_field.style.minimal_width = 50
     value_field.style.maximal_width = 100
-
+    add_move_up_down_buttons(row, #condition_flow.children)
     row.add {
         type = "sprite-button",
         name = "delete_condition_button_" .. num_conditions + 1,
@@ -464,20 +490,31 @@ function SpaceShipGuis.add_station(parent)
 
             -- Get list of planet surfaces
             local planet_names = {}
-            for _, surface in pairs(game.surfaces) do
+--[[             for _, surface in pairs(game.surfaces) do
                 if not string.find(surface.name, "platform") then
                     table.insert(planet_names, surface.name)
+                    --@Pigstyle : You can up the icon directly in the text
                 end
+            end ]]
+
+            local display_planet_names = {}
+
+            for _, location in pairs(prototypes.space_location) do
+
+                table.insert(display_planet_names, {"", "[space-location=" .. location.name .. "] ", location.localised_name})
+                table.insert(planet_names, location.name)
             end
 
             -- Create the dropdown with stored selection
             local planet_dropdown = stop1.add {
                 type = "drop-down",
                 name = "station-planet-dropdown_" .. key,
-                items = planet_names,
-                selected_index = 1
+                items = display_planet_names,
+                selected_index = 1,
+                tags = { names = planet_names }
             }
             planet_dropdown.style.horizontally_stretchable = true
+            planet_dropdown.style.maximal_width = 150
 
             -- Set the stored planet if it exists
             if ship.schedule.records[key] and ship.schedule.records[key].station then
@@ -519,7 +556,7 @@ function SpaceShipGuis.add_station(parent)
             local moveup = movebuttonsflow.add {
                 type = "sprite-button",
                 name = "moveup",
-                sprite = "virtual-signal/signal-greater-than",
+                sprite = "virtual-signal/up-arrow",
                 tooltip = "This is a sprite button",
                 style = "train_schedule_action_button"
             }
@@ -527,7 +564,7 @@ function SpaceShipGuis.add_station(parent)
             local movedown = movebuttonsflow.add {
                 type = "sprite-button",
                 name = "movedown",
-                sprite = "virtual-signal/signal-less-than",
+                sprite = "virtual-signal/down-arrow",
                 tooltip = "This is a sprite button",
                 style = "train_schedule_action_button"
             }
@@ -583,7 +620,7 @@ function SpaceShipGuis.close_spaceship_gui(event)
 end
 
 -- Function to handle button clicks
-function SpaceShipGuis.hanon_click(event)
+function SpaceShipGuis.handle_button_click(event)
     local button_name = event.element.name
     local player = game.get_player(event.player_index)
     local ship = storage.spaceships[tonumber(event.element.parent.name:match("(%d+)$"))]
@@ -678,7 +715,8 @@ function SpaceShipGuis.handle_dropdown_selection(event)
     elseif dropdown.name:match("^station%-planet%-dropdown_%d+$") then
         local station_number = tonumber(dropdown.name:match("%d+"))
         if station_number then
-            local selected_planet = dropdown.items[dropdown.selected_index]
+            --local selected_planet = dropdown.items[dropdown.selected_index]
+            local selected_planet = dropdown.tags.names[dropdown.selected_index]
             if selected_planet then
                 -- Initialize the record if it doesn't exist
                 if not ship.schedule.records[station_number] then
