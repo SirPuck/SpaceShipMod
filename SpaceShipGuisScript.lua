@@ -583,44 +583,65 @@ function SpaceShipGuis.close_spaceship_gui(event)
 end
 
 -- Function to handle button clicks
-function SpaceShipGuis.handle_button_click(event)
+function SpaceShipGuis.hanon_click(event)
     local button_name = event.element.name
     local player = game.get_player(event.player_index)
-    if button_name == "scan-ship" then -- Call the scan_ship function
-        player.print("Scanning the ship...")
-        local ship = storage.spaceships[tonumber(event.element.parent.name:match("(%d+)$"))]
-        SpaceShip.start_scan_ship(ship)
-    elseif button_name == "ship-takeoff" then -- Call the shipTakeoff function
-        if storage.spaceships[storage.opened_entity_id].scanned then
-            player.print("Spaceship takeoff initiated!")
-            SpaceShip.ship_takeoff(player)
-        else
-            player.print("Error: You must scan the ship before taking off.")
+    local ship = storage.spaceships[tonumber(event.element.parent.name:match("(%d+)$"))]
+
+    assert(player)
+    
+    local actions = {
+        ["scan-ship"] = function()
+            player.print("Scanning the ship...")
+            SpaceShip.start_scan_ship(ship)
+        end,
+        ["ship-takeoff"] = function()
+            if storage.spaceships[storage.opened_entity_id].scanned then
+                player.print("Spaceship takeoff initiated!")
+                SpaceShip.ship_takeoff(player)
+            else
+                player.print("Error: You must scan the ship before taking off.")
+            end
+        end,
+        ["ship-platform"] = function()
+            player.print("Entering Travel Mode")
+            SpaceShip.clone_ship_to_space_platform(player)
+        end,
+        ["close-spaceship-extended-gui"] = function()
+            SpaceShipGuis.close_spaceship_gui(player)
+        end,
+        ["confirm-dock"] = function()
+            player.print("Docking confirmed!")
+            SpaceShip.finalize_dock(player)
+        end,
+        ["cancel-dock"] = function()
+            player.print("Docking canceled!")
+            SpaceShip.cancel_dock(player)
+        end,
+        ["ship-dock"] = function()
+            player.print("Docking the spaceship...")
+            SpaceShip.dock_ship(player)
+        end,
+        ["add-station"] = function()
+            SpaceShip.add_or_change_station(ship)
+            SpaceShipGuis.add_station(event.element.parent)
+        end,
+        ["delete-station"] = function()
+            SpaceShipGuis.delete_station(event)
+        end,
+        ["add-wait-condition"] = function()
+            SpaceShipGuis.add_condition_row(event)
+            SpaceShipGuis.save_wait_conditions(event.element.parent)
+        end,
+        ["close-dock-gui"] = function()
+            if player.gui.screen["docking-port-gui"] then
+                player.gui.screen["docking-port-gui"].destroy()
+            end
         end
-    elseif button_name == "ship-platform" then --travel mode
-        player.print("Entering Travel Mode")
-        SpaceShip.clone_ship_to_space_platform(player)
-    elseif button_name == "close-spaceship-extended-gui" then
-        SpaceShipGuis.close_spaceship_gui(player)
-    elseif button_name == "confirm-dock" then
-        player.print("Docking confirmed!")
-        SpaceShip.finalize_dock(player) -- Call the finalizeTakeoff function
-    elseif button_name == "cancel-dock" then
-        player.print("Docking canceled!")
-        SpaceShip.cancel_dock(player) -- Call the cancelTakeoff function
-    elseif button_name == "ship-dock" then
-        player.print("Docking the spaceship...")
-        SpaceShip.dock_ship(player)
-    elseif button_name == "add-station" then
-        local ship = storage.spaceships[tonumber(event.element.parent.parent.parent.parent.name:match("(%d+)$"))]
-        SpaceShip.add_or_change_station(ship)
-        SpaceShipGuis.add_station(event.element.parent)
-    elseif button_name == "delete-station" then
-        SpaceShipGuis.delete_station(event)
-    elseif button_name == "add-wait-condition" then
-        SpaceShipGuis.add_condition_row(event)
-        SpaceShipGuis.save_wait_conditions(event.element.parent)
-    elseif button_name:match("^delete_condition_button_%d+$") then
+    }
+
+    -- Handle dynamic button names
+    if button_name:match("^delete_condition_button_%d+$") then
         local frame = event.element.parent.parent.parent.parent.parent
         SpaceShipGuis.delete_condition(event)
         SpaceShipGuis.save_wait_conditions(frame)
@@ -630,13 +651,9 @@ function SpaceShipGuis.handle_button_click(event)
         SpaceShipGuis.save_wait_conditions(event.element.parent.parent.parent.parent)
     elseif button_name == "auto-manual-switch" then
         local switch = event.element
-        local ship = storage.spaceships[tonumber(event.element.parent.parent.parent.name:match("(%d+)$"))]
-        -- Save the state to storage (left = automatic = true, right = manual = false)
         ship.automatic = (switch.switch_state == "left")
-    elseif button_name == "close-dock-gui" then
-        if player.gui.screen["docking-port-gui"] then
-            player.gui.screen["docking-port-gui"].destroy()
-        end
+    elseif actions[button_name] then
+        actions[button_name]()
     else
         player.print("Unknown button clicked: " .. button_name)
     end
